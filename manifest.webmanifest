@@ -1,0 +1,33 @@
+{
+  "id": "./",
+  "name": "神經系統：概念圖練習",
+  "short_name": "神經系統",
+  "description": "國中生物神經系統互動概念圖：字卡分類、連線與概念檢查。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F9FBFE",
+  "theme_color": "#0B4FAD",
+  "lang": "zh-TW",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

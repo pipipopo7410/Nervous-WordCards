@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B4FAD">
+  <meta name="application-name" content="神經系統概念圖">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="神經系統">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="神經系統概念圖互動練習：自由擺放字卡、連線、貼齊格線與檢查架構。">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/x-icon" href="./favicon.ico">
+  <title>🎯 神經系統：概念圖練習｜2.0.2</title>
+  <style>
+    :root { --green:#0f906f; --green-dark:#08775b; --ink:#243247; --muted:#64748b; --border:#d8e2e8; --grid:24px; --card-shadow:0 2px 5px rgba(23,43,62,.08); }
+    *, *::before, *::after { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    html { height:100%; }
+    body { margin:0; height:100%; min-height:100dvh; display:flex; flex-direction:column; color:var(--ink); background:#f8fafc; font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif; }
+    button { font:inherit; -webkit-tap-highlight-color:transparent; }
+    button:focus-visible, #canvas:focus-visible { outline:3px solid #3b82f6; outline-offset:3px; }
+    .topbar { background:white; border-bottom:1px solid var(--border); box-shadow:0 1px 7px rgba(15,23,42,.04); z-index:5; padding:11px clamp(12px,2.5vw,28px); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+    .brand { display:flex; align-items:center; gap:10px; min-width:0; }
+    .brand h1 { font-size:clamp(17px,1.65vw,23px); line-height:1.3; margin:0; font-weight:800; letter-spacing:.01em; }
+    .version { font-size:11px; padding:3px 7px; border-radius:6px; background:#e7f6f1; color:#087158; font-weight:800; white-space:nowrap; }
+    .toolbar { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+    .btn { border:1px solid var(--border); background:white; color:#425267; border-radius:9px; padding:9px 12px; font-size:14px; font-weight:750; line-height:1.2; cursor:pointer; min-height:40px; white-space:nowrap; }
+    .btn:hover { background:#f1f5f9; }
+    .btn.primary { color:white; background:var(--green); border-color:var(--green); }
+    .btn.primary:hover { background:var(--green-dark); }
+    .btn[aria-pressed="true"] { border-color:#02876b; color:#066c55; background:#e4f7ef; }
+    .btn:disabled { opacity:.48; cursor:not-allowed; }
+    .btn.subtle { color:#607083; }
+    .notice { min-height:35px; display:flex; gap:9px; align-items:center; flex-wrap:wrap; background:#f0f8f6; border-bottom:1px solid #deebe8; padding:7px clamp(12px,2.5vw,28px); color:#3d6b63; font-size:13px; }
+    #status-text { font-weight:600; }
+    .notice .hint { font-weight:400; color:#587b75; }
+    .offline-status { margin-left:auto; font-size:12px; white-space:nowrap; color:#537f77; font-weight:700; }
+    .workspace { flex:1; min-height:0; display:flex; width:100%; max-width:1800px; margin:0 auto; overflow:hidden; }
+    .sidebar { width:228px; flex:0 0 228px; display:flex; min-height:0; flex-direction:column; padding:12px 10px; background:#fff; border-right:1px solid var(--border); }
+    .sidebar h2 { margin:0 0 10px; font-size:13px; color:#5b7183; text-align:center; letter-spacing:.05em; }
+    .sidebar .subhint { color:#8796a2; font-weight:500; font-size:11px; margin-top:3px; letter-spacing:0; }
+    #card-pool { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:9px; overflow:auto; padding:4px 3px 14px; overscroll-behavior:contain; }
+    .concept-card { --bg:#e6e9fe; --fg:#373a75; --bd:#b8bdeb; appearance:none; border:1.5px solid var(--bd); background:var(--bg); color:var(--fg); border-radius:9px; padding:4px 5px; box-shadow:var(--card-shadow); font-weight:800; text-align:center; display:flex; align-items:center; justify-content:center; white-space:nowrap; cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; line-height:1.2; font-size:14px; min-height:42px; width:100%; }
+    .concept-card:active { cursor:grabbing; }
+    .concept-card.canvas-card { width:var(--w); height:var(--h); min-height:0; position:absolute; left:0; top:0; z-index:2; transform:translate3d(var(--x),var(--y),0); font-size:var(--fs,14px); }
+    .concept-card.selected { outline:3px solid #357cdd; outline-offset:2px; z-index:5; }
+    .concept-card.placing { outline:3px dashed #059669; outline-offset:2px; }
+    .concept-card.dragging { z-index:10; box-shadow:0 10px 23px rgba(17,43,66,.25); }
+    .concept-card.snap-highlight { animation:snapflash .35s ease-out; }
+    @keyframes snapflash { from { box-shadow:0 0 0 6px rgba(16,185,129,.28); } to {box-shadow:var(--card-shadow);} }
+    .slot-placeholder { border:1.5px dashed #cbd5e1; border-radius:9px; background:#f5f8fa; color:#9aaabb; min-height:42px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:650; }
+    .canvas-wrap { position:relative; flex:1; min-width:0; min-height:230px; overflow:hidden; background-color:#f9fbfe; background-image:radial-gradient(#dce5ec 1.5px,transparent 1.5px); background-size:var(--grid) var(--grid); }
+    #canvas { width:100%; height:100%; position:relative; touch-action:manipulation; }
+    #canvas.placement-mode { cursor:crosshair; }
+    #svg-layer { position:absolute; width:100%; height:100%; inset:0; pointer-events:none; z-index:1; overflow:visible; }
+    .canvas-empty { position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); color:#9baebb; border:2px dashed #d6e0e8; padding:17px 22px; border-radius:16px; font-size:14px; text-align:center; white-space:nowrap; pointer-events:none; }
+    .canvas-counter { position:absolute; right:12px; bottom:10px; z-index:3; color:#78909d; font-size:12px; background:rgba(255,255,255,.88); padding:5px 8px; border-radius:7px; pointer-events:none; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50; }
+    .modal { width:min(430px,100%); background:#fff; border-radius:18px; padding:28px 26px; box-shadow:0 20px 70px rgba(15,23,42,.22); text-align:center; }
+    .modal .success-mark { display:flex; justify-content:center; align-items:center; border-radius:50%; width:62px; height:62px; margin:0 auto 14px; background:#dff9ea; color:#059669; font-size:30px; font-weight:900; }
+    .modal h2 { font-size:22px; margin:0 0 10px; }
+    .modal p { font-size:15px; color:#66788b; margin:0 0 22px; line-height:1.7; }
+    .modal .btn { width:100%; }
+    /* 每張卡保持原版分類用色，無需連到外部 CSS CDN。 */
+    .c0 { --bg:#e0e7ff; --bd:#a5b4fc; --fg:#312e81; }
+    .c1 { --bg:#f3e8ff; --bd:#d8b4fe; --fg:#581c87; }
+    .c2 { --bg:#fef3c7; --bd:#fcd34d; --fg:#78350f; }
+    .c3 { --bg:#fae8ff; --bd:#f0abfc; --fg:#701a75; }
+    .c4 { --bg:#fce7f3; --bd:#f9a8d4; --fg:#831843; }
+    .c5 { --bg:#ffedd5; --bd:#fdba74; --fg:#7c2d12; }
+    .c6 { --bg:#fef9c3; --bd:#fde047; --fg:#713f12; }
+    .c7 { --bg:#e0f2fe; --bd:#7dd3fc; --fg:#0c4a6e; }
+    .c8 { --bg:#d1fae5; --bd:#6ee7b7; --fg:#064e3b; }
+    .c9 { --bg:#ccfbf1; --bd:#5eead4; --fg:#134e4a; }
+    .c10 { --bg:#ffe4e6; --bd:#fda4af; --fg:#881337; }
+    .c11 { --bg:#cffafe; --bd:#67e8f9; --fg:#164e63; }
+    @media (max-width:900px) {
+      .workspace { flex-direction:column; }
+      .sidebar { width:100%; flex:0 0 auto; max-height:164px; padding:8px 10px 9px; border-right:0; border-bottom:1px solid var(--border); }
+      .sidebar h2 { text-align:left; margin:0 0 5px 3px; }
+      .sidebar .subhint { display:inline; margin-left:8px; }
+      #card-pool { display:flex; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; padding:4px 4px 10px; gap:8px; }
+      #card-pool .concept-card,#card-pool .slot-placeholder { flex:0 0 113px; width:113px; }
+    }
+    @media (max-width:650px) {
+      .topbar { align-items:stretch; }
+      .brand { justify-content:space-between; }
+      .toolbar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+      .toolbar .btn { font-size:13px; padding:8px; white-space:normal; }
+      .notice { align-items:start; font-size:12px; }
+      .notice .hint { display:none; }
+      .sidebar { max-height:120px; }
+      .sidebar h2 { font-size:12px; }
+      .concept-card { font-size:13px; }
+      .canvas-empty { font-size:12px; padding:11px 12px; }
+    }
+    @media (max-height:520px) and (min-width:900px) { .topbar { padding-top:6px; padding-bottom:6px; } .notice { min-height:28px; padding-top:4px; padding-bottom:4px; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><h1>🎯 神經系統：概念圖練習</h1><span class="version">2.0.2 測試版</span></div>
+    <div class="toolbar" aria-label="活動操作">
+      <button class="btn primary" type="button" id="check-btn">檢查架構</button>
+      <button class="btn" type="button" id="snap-btn" aria-pressed="false" title="開啟時立即整理現有字卡，以後拖曳也會自動貼齊；關閉後可自由擺放">貼齊格線：關</button>
+      <button class="btn subtle" type="button" id="return-btn" disabled title="先在畫布點選字卡，才能放回卡池">放回卡池</button>
+      <button class="btn subtle" type="button" id="reset-btn">重設畫布</button>
+    </div>
+  </header>
+  <div class="notice"><span id="status-text" role="status" aria-live="polite">把左側字卡拖到畫布，依序點兩張字卡即可連線。</span><span class="hint">點兩張字卡連線；貼齊格線可自由開關。上位概念要在上方，交叉分類不限上下。</span><span id="offline-status" class="offline-status" aria-live="polite"></span></div>
+  <main class="workspace">
+    <aside class="sidebar" id="sidebar" aria-label="神經節點卡片區">
+      <h2>神經節點卡 <span class="subhint">拖曳或點選放置</span></h2>
+      <div id="card-pool"></div>
+    </aside>
+    <section class="canvas-wrap" aria-label="自由排列概念圖畫布">
+      <div id="canvas" tabindex="0" aria-label="概念圖畫布；選取字卡後，按此處放置">
+        <svg id="svg-layer" aria-hidden="true"></svg>
+        <div id="canvas-empty" class="canvas-empty">從卡池放入字卡，開始建立神經系統概念圖</div>
+        <div id="canvas-counter" class="canvas-counter">已放置 0／12 張・連線 0／13 條</div>
+      </div>
+    </section>
+  </main>
+  <div id="feedback-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="feedback-title" hidden>
+    <div class="modal">
+      <div class="success-mark" aria-hidden="true">✓</div>
+      <h2 id="feedback-title">太棒了！概念圖完成！</h2>
+      <p id="feedback-text">你成功整理了神經系統的階層關係，所有必要連線都正確。</p>
+      <button class="btn primary" id="close-modal" type="button">回到概念圖</button>
+    </div>
+  </div>
+  <script>
+    'use strict';
+    // 1.0 的 12 張卡、13 條關係全部保留；只有真正的包含關係檢查上下位置。
+    const unitData = {
+      cards: [
+        '神經系統','中樞神經','周圍神經','腦','脊髓','腦神經','脊神經',
+        '大腦','小腦','腦幹','感覺神經','運動神經'
+      ],
+      validRelations: [
+        ['神經系統','中樞神經'],['神經系統','周圍神經'],
+        ['中樞神經','腦'],['中樞神經','脊髓'],
+        ['腦','大腦'],['腦','小腦'],['腦','腦幹'],
+        ['周圍神經','腦神經'],['周圍神經','脊神經'],
+        ['腦神經','感覺神經'],['腦神經','運動神經'],
+        ['脊神經','感覺神經'],['脊神經','運動神經']
+      ]
+    };
+    // 結構性包含關係：必須上位在上、下位在下，左右可以自由決定。
+    // 感覺/運動與腦神經/脊神經是「功能／發出位置」兩種交叉分類依據，
+    // 彼此不適用上下階層限制，但都屬於周圍神經。
+    const hierarchyRules = [
+      ['神經系統','中樞神經'],['神經系統','周圍神經'],
+      ['中樞神經','腦'],['中樞神經','脊髓'],
+      ['腦','大腦'],['腦','小腦'],['腦','腦幹'],
+      ['周圍神經','腦神經'],['周圍神經','脊神經'],
+      ['周圍神經','感覺神經'],['周圍神經','運動神經']
+    ];
+    const hierarchyPairs = new Map(hierarchyRules.map(([parent,child]) => [pairKey(parent,child),{parent,child}]));
+    const GRID = 24;
+    const GAP = 7;
+    const canvas = document.getElementById('canvas');
+    const pool = document.getElementById('card-pool');
+    const svg = document.getElementById('svg-layer');
+    const statusText = document.getElementById('status-text');
+    const checkBtn = document.getElementById('check-btn');
+    const snapBtn = document.getElementById('snap-btn');
+    const returnBtn = document.getElementById('return-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const modal = document.getElementById('feedback-modal');
+    const emptyMsg = document.getElementById('canvas-empty');
+    const counter = document.getElementById('canvas-counter');
+    const validPairs = new Set(unitData.validRelations.map(([a,b]) => [a,b].sort().join('|')));
+    let cards = new Map();
+    let connections = new Map();
+    let selectedId = null;
+    let placingId = null;
+    let snapOn = false; // 預設關閉，不強迫學生使用對齊。
+    let drag = null;
+    let connCounter = 0;
+    let lastCanvasSize = null;
+
+    function say(message) { statusText.textContent = message; }
+    function pairKey(a,b) { return [a,b].sort().join('|'); }
+    function inBounds(x,y,w,h) {
+      return x >= -0.001 && y >= -0.001 && x+w <= canvas.clientWidth+.001 && y+h <= canvas.clientHeight+.001;
+    }
+    function clamp(v,lo,hi) { return Math.max(lo,Math.min(v,Math.max(lo,hi))); }
+    function clampPosition(card,x,y) {
+      return { x:clamp(x,0,canvas.clientWidth-card.w), y:clamp(y,0,canvas.clientHeight-card.h) };
+    }
+    function occupiedRects(exceptId, extra=[]) {
+      const rs=[];
+      for (const c of cards.values()) if (c.inCanvas && c.id!==exceptId) rs.push({x:c.x,y:c.y,w:c.w,h:c.h});
+      return [...rs,...extra];
+    }
+    function overlaps(x,y,w,h,rs) {
+      return rs.some(r => x < r.x+r.w+GAP && x+w+GAP > r.x && y < r.y+r.h+GAP && y+h+GAP > r.y);
+    }
+    function nearestGridSpot(card,x,y,blocked=occupiedRects(card.id)) {
+      // 對齊的是字卡中心，不是分類樹的階層或順序。
+      const cx=Math.round((x+card.w/2)/GRID), cy=Math.round((y+card.h/2)/GRID);
+      const maxRadius=Math.ceil(Math.max(canvas.clientWidth,canvas.clientHeight)/GRID)+3;
+      for (let r=0;r<=maxRadius;r++) {
+        const choices=[];
+        for(let dx=-r;dx<=r;dx++) for(let dy=-r;dy<=r;dy++) {
+          if(Math.max(Math.abs(dx),Math.abs(dy))!==r) continue;
+          const px=(cx+dx)*GRID-card.w/2,py=(cy+dy)*GRID-card.h/2;
+          if(!inBounds(px,py,card.w,card.h) || overlaps(px,py,card.w,card.h,blocked)) continue;
+          choices.push({x:px,y:py,d:(px-x)**2+(py-y)**2});
+        }
+        if(choices.length) { choices.sort((a,b)=>a.d-b.d); return choices[0]; }
+      }
+      return clampPosition(card,x,y);
+    }
+    function moveCard(card,x,y) {
+      const p=clampPosition(card,x,y);
+      card.x=p.x;card.y=p.y;
+      card.el.style.setProperty('--x',p.x+'px');
+      card.el.style.setProperty('--y',p.y+'px');
+      drawLines();
+    }
+    function flashCard(card) {
+      card.el.classList.remove('snap-highlight');
+      void card.el.offsetWidth;
+      card.el.classList.add('snap-highlight');
+    }
+    function snapOne(card) {
+      if(!card.inCanvas) return;
+      const p=nearestGridSpot(card,card.x,card.y);
+      moveCard(card,p.x,p.y);
+      flashCard(card);
+    }
+    function alignAll() {
+      const active=[...cards.values()].filter(c=>c.inCanvas);
+      if(!active.length) return 0;
+      // 用原本位置逐張尋找最近的空格；既不自動解題，也不改變連線。
+      const planned=[];
+      for(const c of active) {
+        const p=nearestGridSpot(c,c.x,c.y,planned);
+        planned.push({x:p.x,y:p.y,w:c.w,h:c.h,id:c.id});
+      }
+      planned.forEach(p=>{ const c=cards.get(p.id);moveCard(c,p.x,p.y);flashCard(c); });
+      drawLines();
+      return planned.length;
+    }
+    function updateCounter() {
+      const count=[...cards.values()].filter(c=>c.inCanvas).length;
+      counter.textContent=`已放置 ${count}／${cards.size} 張・連線 ${connections.size}／${validPairs.size} 條`;
+      emptyMsg.hidden = count!==0;
+      returnBtn.disabled=!(selectedId && cards.get(selectedId)?.inCanvas);
+    }
+    function clearSelection() {
+      if(selectedId && cards.has(selectedId)) cards.get(selectedId).el.classList.remove('selected');
+      selectedId=null;
+      updateCounter();
+    }
+    function clearPlacement() {
+      if(placingId && cards.has(placingId)) cards.get(placingId).el.classList.remove('placing');
+      placingId=null; canvas.classList.remove('placement-mode');
+    }
+    function unverify() {
+      for(const c of connections.values()) c.status='gray';
+      drawLines();
+    }
+    function drawLines() {
+      const ns='http://www.w3.org/2000/svg';
+      svg.replaceChildren();
+      svg.setAttribute('viewBox',`0 0 ${Math.max(1,canvas.clientWidth)} ${Math.max(1,canvas.clientHeight)}`);
+      for(const link of connections.values()) {
+        const a=cards.get(link.a),b=cards.get(link.b);
+        if(!a?.inCanvas||!b?.inCanvas) continue;
+        const line=document.createElementNS(ns,'line');
+        line.setAttribute('x1',a.x+a.w/2);line.setAttribute('y1',a.y+a.h/2);
+        line.setAttribute('x2',b.x+b.w/2);line.setAttribute('y2',b.y+b.h/2);
+        // 橙色虛線：關係正確但上下位置反了；紅色：關係本身錯誤。
+        line.setAttribute('stroke',link.status==='green'?'#059669':link.status==='amber'?'#c47a0b':link.status==='red'?'#dc2626':'#91a6ba');
+        line.setAttribute('stroke-width',link.status==='amber'?'4.5':'3.5');
+        if(link.status==='amber') line.setAttribute('stroke-dasharray','8 5');line.setAttribute('stroke-linecap','round');
+        svg.appendChild(line);
+      }
+    }
+    function removePlaceholder(card) { document.getElementById('ph-'+card.id)?.remove(); }
+    function startCanvasCard(card,x,y) {
+      if(card.inCanvas) return;
+      const ph=document.createElement('div'); ph.className='slot-placeholder';ph.id='ph-'+card.id;
+      ph.textContent='已放置';ph.setAttribute('aria-hidden','true');
+      card.el.replaceWith(ph);
+      card.inCanvas=true;
+      card.el.classList.add('canvas-card');
+      card.el.style.setProperty('--w',card.w+'px');
+      card.el.style.setProperty('--h',card.h+'px');
+      card.el.style.setProperty('--fs',card.small?'14px':'15px');
+      canvas.appendChild(card.el);
+      moveCard(card,x,y);
+      updateCounter();
+    }
+    function returnToPool(card) {
+      if(!card?.inCanvas) return;
+      if(selectedId===card.id) clearSelection();
+      card.inCanvas=false;
+      card.el.classList.remove('canvas-card','dragging','selected','placing');
+      card.el.style.removeProperty('--x');card.el.style.removeProperty('--y');
+      const ph=document.getElementById('ph-'+card.id);
+      if(ph) ph.replaceWith(card.el); else pool.appendChild(card.el);
+      removePlaceholder(card);
+      for(const [k,ln] of connections) if(ln.a===card.id||ln.b===card.id) connections.delete(k);
+      clearPlacement();
+      unverify();updateCounter();
+      say(`「${card.name}」已放回卡池，與它相關的連線已移除。`);
+    }
+    function placeAt(card,clientX,clientY) {
+      const r=canvas.getBoundingClientRect();
+      const x=clientX-r.left-card.w/2, y=clientY-r.top-card.h/2;
+      startCanvasCard(card,x,y);
+      if(snapOn) snapOne(card);
+      clearPlacement();
+      say(`已放入「${card.name}」。點選兩張畫布字卡即可建立或取消連線。`);
+    }
+    function toggleLink(a,b) {
+      const key=pairKey(a,b);
+      if(connections.has(key)) { connections.delete(key);say('已移除這條連線。'); }
+      else {connections.set(key,{a,b,status:'gray',id:++connCounter});say('已建立連線；完成後按「檢查架構」。');}
+      unverify();updateCounter();
+    }
+    function onCardClick(ev) {
+      ev.stopPropagation();
+      const card=cards.get(ev.currentTarget.id);
+      if(!card) return;
+      if(card.el.dataset.blockClick==='true') return;
+      if(!card.inCanvas) {
+        clearSelection();
+        if(placingId===card.id) {clearPlacement();say('已取消放置。');return;}
+        clearPlacement();placingId=card.id;card.el.classList.add('placing');
+        canvas.classList.add('placement-mode');
+        say(`已選取「${card.name}」，請點一下畫布決定放置位置。`);
+        return;
+      }
+      clearPlacement();
+      if(!selectedId) {selectedId=card.id;card.el.classList.add('selected');say(`已選取「${card.name}」，再點另一張字卡即可連線。`);}
+      else if(selectedId===card.id) {clearSelection();say('已取消選取。');}
+      else {const first=selectedId;clearSelection();toggleLink(first,card.id);}
+      updateCounter();
+    }
+    function onPointerDown(e) {
+      if(e.button!==undefined && e.button!==0) return;
+      if(e.isPrimary===false || drag) return;
+      const card=cards.get(e.currentTarget.id);
+      if(!card) return;
+      const r=canvas.getBoundingClientRect();
+      const fromPool=!card.inCanvas;
+      drag={card,fromPool,startX:e.clientX,startY:e.clientY,moved:false,
+        offsetX:fromPool?card.w/2:e.clientX-r.left-card.x,
+        offsetY:fromPool?card.h/2:e.clientY-r.top-card.y};
+      window.addEventListener('pointermove',onPointerMove,{passive:false});
+      window.addEventListener('pointerup',onPointerUp);
+      window.addEventListener('pointercancel',onPointerCancel);
+    }
+    function onPointerMove(e) {
+      if(!drag||e.isPrimary===false) return;
+      const d=drag;
+      if(!d.moved && Math.hypot(e.clientX-d.startX,e.clientY-d.startY)<7) return;
+      if(e.cancelable) e.preventDefault();
+      if(!d.moved) {
+        d.moved=true;clearPlacement();clearSelection();
+        if(d.fromPool) startCanvasCard(d.card,0,0);
+        d.card.el.classList.add('dragging');
+      }
+      const r=canvas.getBoundingClientRect();
+      moveCard(d.card,e.clientX-r.left-d.offsetX,e.clientY-r.top-d.offsetY);
+    }
+    function unbindDrag() {
+      window.removeEventListener('pointermove',onPointerMove);
+      window.removeEventListener('pointerup',onPointerUp);
+      window.removeEventListener('pointercancel',onPointerCancel);
+    }
+    function finishPointer(e,cancelled=false) {
+      if(!drag) return;
+      const d=drag;drag=null;unbindDrag();
+      const card=d.card;
+      if(!d.moved) return;
+      card.el.classList.remove('dragging');
+      // 只抑制手勢結束後可能附帶的 click，不影響下一次真正點選。
+      card.el.dataset.blockClick='true';
+      setTimeout(()=>{ if(card.el) card.el.dataset.blockClick='false'; },0);
+      const side=document.getElementById('sidebar').getBoundingClientRect();
+      const cr=canvas.getBoundingClientRect();
+      const inSide=e.clientX>=side.left && e.clientX<=side.right && e.clientY>=side.top && e.clientY<=side.bottom;
+      const inCanvas=e.clientX>=cr.left && e.clientX<=cr.right && e.clientY>=cr.top && e.clientY<=cr.bottom;
+      if(inSide || (d.fromPool && (!inCanvas || cancelled))) {
+        returnToPool(card);return;
+      }
+      if(snapOn) snapOne(card);
+      unverify();updateCounter();
+      say(`已放置「${card.name}」。${snapOn?'字卡已貼齊格線。':'目前可自由移動，開啟「貼齊格線」可整理字卡。'}`);
+    }
+    function onPointerUp(e){finishPointer(e,false);}
+    function onPointerCancel(e){finishPointer(e,true);}
+    function createCard(name,index) {
+      const small=['大腦','小腦','腦幹'].includes(name);
+      const btn=document.createElement('button');btn.type='button';
+      btn.id='card-'+index;btn.className='concept-card c'+index;btn.textContent=name;
+      btn.setAttribute('aria-label',name+'，點選後可在畫布放置');
+      btn.addEventListener('click',onCardClick);
+      btn.addEventListener('pointerdown',onPointerDown);
+      return {id:btn.id,name,el:btn,small,w:small?94:118,h:small?38:46,x:0,y:0,inCanvas:false};
+    }
+    function initGame() {
+      drag=null;unbindDrag();clearSelection();clearPlacement();
+      canvas.querySelectorAll('.canvas-card').forEach(el=>el.remove());
+      pool.replaceChildren();svg.replaceChildren();connections=new Map();cards=new Map();connCounter=0;
+      const order=unitData.cards.map((_,i)=>i);
+      // 公平洗牌，不依賴 sort(() => Math.random() - 0.5) 的偏差分布。
+      for(let i=order.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+      for(const i of order){const card=createCard(unitData.cards[i],i);cards.set(card.id,card);pool.appendChild(card.el);}
+      modal.hidden=true;snapOn=false;snapBtn.setAttribute('aria-pressed','false');snapBtn.textContent='貼齊格線：關';
+      lastCanvasSize={w:canvas.clientWidth,h:canvas.clientHeight};
+      updateCounter();say('把左側字卡拖到畫布，依序點兩張字卡即可連線。');
+    }
+    function resetCanvas() {
+      const changed=[...cards.values()].some(c=>c.inCanvas)||connections.size>0;
+      if(!changed) {say('畫布已是初始狀態。');return;}
+      if(!window.confirm('確定要清空畫布並重新開始嗎？')) return;
+      initGame();
+    }
+    // 僅比較中心點的垂直座標；不以左右位置、對齊格線或標準樹形評分。
+    function above(parent,child) {
+      return parent.y + parent.h/2 + 5 < child.y + child.h/2;
+    }
+    function cardByName(name) {
+      for(const c of cards.values()) if(c.name===name) return c;
+      return null;
+    }
+    function checkAnswers() {
+      clearSelection();clearPlacement();
+      let correct=0,wrong=0,upsideDown=0;
+      for(const [key,link] of connections) {
+        const a=cards.get(link.a),b=cards.get(link.b);
+        if(!a?.inCanvas||!b?.inCanvas) {connections.delete(key);continue;}
+        const keyByName=pairKey(a.name,b.name);
+        const ok=validPairs.has(keyByName);
+        const structural=hierarchyPairs.get(keyByName);
+        const ordered=!structural || above(cardByName(structural.parent),cardByName(structural.child));
+        link.status=!ok?'red':ordered?'green':'amber';
+        if(ok) correct++;else wrong++;
+        if(ok && !ordered) upsideDown++;
+      }
+      // 下列兩項是「周圍神經」與功能分類的共同上位關係；
+      // 原版沒有直接連線，故只檢查它們的相對高度，不增加必答線數。
+      const missingHeight=[];
+      for(const [parent,child] of hierarchyRules) {
+        const a=cardByName(parent),b=cardByName(child);
+        if(a?.inCanvas && b?.inCanvas && !above(a,b)) missingHeight.push([parent,child]);
+      }
+      drawLines();updateCounter();
+      if(wrong===0 && correct===validPairs.size && missingHeight.length===0) {
+        document.getElementById('feedback-text').textContent='13 條必要關係皆正確，上位概念也都在下位概念上方。不同分類依據的交叉連線不限制上下位置。';
+        modal.hidden=false;document.getElementById('close-modal').focus();
+        say('連線與階層位置全部正確，完成挑戰！');
+      } else {
+        const missing=validPairs.size-correct;
+        let detail=`連線：${correct}／${validPairs.size} 條正確`;
+        if(wrong) detail+=`、${wrong} 條錯誤（紅線）`;
+        if(missing) detail+=`、尚缺 ${missing} 條`;
+        if(missingHeight.length) {
+          const [parent,child]=missingHeight[0];
+          detail+=`。上下位置有 ${missingHeight.length} 處需調整，例如「${parent}」應在「${child}」上方`;
+          if(upsideDown) detail+='（橙色虛線代表連線對但位置反了）';
+        } else if(!wrong && !missing) detail+='。全部正確';
+        detail+='。感覺／運動與腦神經／脊神經之間不限上下。';
+        say(detail);
+      }
+    }
+    function closeModal() {modal.hidden=true;checkBtn.focus();}
+    function handleCanvasClick(e) {
+      if(placingId) { const c=cards.get(placingId); if(c)placeAt(c,e.clientX,e.clientY); }
+      else clearSelection();
+    }
+    function handleCanvasKey(e) {
+      if(e.target!==canvas) return;
+      if(placingId && (e.key==='Enter'||e.key===' ')) {
+        e.preventDefault();const c=cards.get(placingId);if(c){const r=canvas.getBoundingClientRect();placeAt(c,r.left+r.width/2,r.top+r.height/2);}
+      } else if(e.key==='Escape') {clearSelection();clearPlacement();}
+    }
+    function onResize() {
+      const current={w:canvas.clientWidth,h:canvas.clientHeight};
+      if(!current.w||!current.h) return;
+      if(lastCanvasSize && !drag && lastCanvasSize.w && lastCanvasSize.h) {
+        for(const c of cards.values()) if(c.inCanvas) {
+          moveCard(c,c.x*current.w/lastCanvasSize.w,c.y*current.h/lastCanvasSize.h);
+        }
+      }
+      lastCanvasSize=current;drawLines();
+    }
+    document.getElementById('check-btn').addEventListener('click',checkAnswers);
+    document.getElementById('reset-btn').addEventListener('click',resetCanvas);
+    document.getElementById('return-btn').addEventListener('click',()=>{if(selectedId)returnToPool(cards.get(selectedId));});
+    snapBtn.addEventListener('click',()=>{
+      snapOn=!snapOn;snapBtn.setAttribute('aria-pressed',String(snapOn));
+      snapBtn.textContent='貼齊格線：'+(snapOn?'開':'關');
+      const aligned=snapOn?alignAll():0;
+      say(snapOn?`貼齊格線已開啟：已整理 ${aligned} 張字卡，之後移動也會自動貼齊；分類關係不受影響。`:'貼齊格線已關閉：字卡恢復自由移動，不會改變既有位置和連線。');
+    });
+    canvas.addEventListener('click',handleCanvasClick);
+    canvas.addEventListener('keydown',handleCanvasKey);
+    document.getElementById('close-modal').addEventListener('click',closeModal);
+    modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!modal.hidden)closeModal();else {clearSelection();clearPlacement();}}});
+    if(typeof ResizeObserver!=='undefined') new ResizeObserver(onResize).observe(canvas);
+    else window.addEventListener('resize',onResize);
+    initGame();
+
+    // GitHub Pages 專案子路徑適用的 PWA。初次安裝必須連網且 HTTPS；網站內容本身無外部 CDN。
+    (function setupOfflineApp() {
+      const state = document.getElementById('offline-status');
+      if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+        state.textContent = location.protocol === 'file:' ? '本機預覽（上架後可安裝）' : '目前瀏覽器不支援離線安裝';
+        return;
+      }
+      state.textContent = '準備離線檔案…';
+      function checkReady() {
+        // 安裝成功時 cache.addAll 會一次完整寫入，才能回報就緒。
+        if (!navigator.serviceWorker.controller) return;
+        const msg = new MessageChannel();
+        msg.port1.onmessage = ev => { state.textContent = ev.data?.ready ? '✓ 已準備離線使用' : '尚未完成離線準備'; };
+        navigator.serviceWorker.controller.postMessage({type:'CHECK_OFFLINE'},[msg.port2]);
+      }
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', {scope:'./'})
+          .then(() => navigator.serviceWorker.ready)
+          .then(() => {checkReady();})
+          .catch(err => { state.textContent='離線準備失敗，請連網重整'; console.warn('SW registration:',err); });
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', checkReady);
+    })();
+  </script>
+</body>
+</html>
